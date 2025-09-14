@@ -80,7 +80,6 @@ export class WispClient extends EventTarget {
   private _url: string;
   private _streams: Map<number, WispStream> = new Map();
   private _nextStreamId: number = 1;
-  private _globalBufferSize: number = 0;
   private _ready: boolean = false;
 
   constructor(url: string) {
@@ -104,8 +103,6 @@ export class WispClient extends EventTarget {
           this._handlePacket(packet);
           
           if (!this._ready && packet.type === PacketType.CONTINUE && packet.streamId === 0) {
-            const continuePayload = decodeContinuePayload(packet.payload);
-            this._globalBufferSize = continuePayload.bufferRemaining;
             this._ready = true;
             resolve();
           }
@@ -188,11 +185,7 @@ export class WispClient extends EventTarget {
         break;
 
       case PacketType.CONTINUE:
-        if (packet.streamId === 0) {
-          // Global buffer size update
-          const continuePayload = decodeContinuePayload(packet.payload);
-          this._globalBufferSize = continuePayload.bufferRemaining;
-        } else if (stream) {
+        if (packet.streamId !== 0 && stream) {
           const continuePayload = decodeContinuePayload(packet.payload);
           stream._handleContinue(continuePayload.bufferRemaining);
         }

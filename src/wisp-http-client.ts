@@ -1,5 +1,6 @@
 import { WispClient } from './wisp-client.js';
 import { HttpRequest, HttpResponse, formatHttpRequest, HttpResponseCollector } from './http.js';
+import { TlsClient } from './tls-client.js';
 
 /**
  * Configuration for the HTTP client
@@ -84,15 +85,101 @@ export class WispHttpClient {
       body
     };
 
-    // Create stream and send request
+    // Create stream
     const stream = this._client!.createStream(parsedUrl.hostname, port);
+    
+    if (isHttps) {
+      // Use TLS for HTTPS requests
+      return this._makeHttpsRequest(stream, parsedUrl.hostname, request, options);
+    } else {
+      // Direct HTTP request
+      return this._makeHttpRequest(stream, request, options);
+    }
+  }
+
+  private async _makeHttpsRequest(
+    stream: any, 
+    hostname: string, 
+    request: HttpRequest, 
+    options: RequestOptions
+  ): Promise<HttpResponse> {
+    const tlsClient = new TlsClient(stream, hostname);
+    
+    return new Promise((resolve, reject) => {
+      const collector = new HttpResponseCollector();
+      const timeout = options.timeout || this._config.timeout!;
+      
+      let timeoutId: ReturnType<typeof setTimeout> | null = setTimeout(() => {
+        tlsClient.close();
+        reject(new Error('Request timeout'));
+      }, timeout);
+
+      const cleanup = () => {
+        if (timeoutId) {
+          clearTimeout(timeoutId);
+          timeoutId = null;
+        }
+      };
+
+      tlsClient.addEventListener('connect', async () => {
+        try {
+          // Send HTTP request over TLS
+          const requestData = formatHttpRequest(request);
+          tlsClient.send(requestData);
+        } catch (error) {
+          cleanup();
+          reject(error);
+        }
+      });
+
+      tlsClient.addEventListener('data', (event: any) => {
+        const data = event.detail as Uint8Array;
+        collector.addChunk(data);
+        
+        if (collector.isComplete()) {
+          cleanup();
+          const response = collector.getResponse();
+          if (response) {
+            resolve(response);
+          } else {
+            reject(new Error('Failed to parse response'));
+          }
+          tlsClient.close();
+        }
+      });
+
+      tlsClient.addEventListener('close', () => {
+        cleanup();
+        const response = collector.getResponse();
+        if (response) {
+          resolve(response);
+        } else {
+          reject(new Error('Connection closed before response was complete'));
+        }
+      });
+
+      tlsClient.addEventListener('error', (event: any) => {
+        cleanup();
+        reject(new Error(`TLS error: ${event.detail?.message || 'Unknown error'}`));
+      });
+
+      // Start TLS connection
+      tlsClient.connect().catch(reject);
+    });
+  }
+
+  private async _makeHttpRequest(
+    stream: any, 
+    request: HttpRequest, 
+    options: RequestOptions
+  ): Promise<HttpResponse> {
     const requestData = formatHttpRequest(request);
     
     return new Promise((resolve, reject) => {
       const collector = new HttpResponseCollector();
       const timeout = options.timeout || this._config.timeout!;
       
-      let timeoutId: number | null = setTimeout(() => {
+      let timeoutId: ReturnType<typeof setTimeout> | null = setTimeout(() => {
         stream.close();
         reject(new Error('Request timeout'));
       }, timeout);
@@ -217,7 +304,12 @@ export function createFetch(config: WispHttpClientConfig) {
         headers.set(key, value);
       }
       
-      return new Response(response.body, {
+      const bodyData = response.body ? new ArrayBuffer(response.body.length) : null;
+      if (bodyData && response.body) {
+        new Uint8Array(bodyData).set(response.body);
+      }
+      
+      return new Response(bodyData, {
         status: response.status,
         statusText: response.statusText,
         headers

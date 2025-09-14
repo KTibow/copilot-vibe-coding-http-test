@@ -94,7 +94,7 @@ export function parseHttpResponse(data: Uint8Array): HttpResponse {
   }
   
   // Extract body
-  const headerText = lines.slice(0, headerEndIndex + 1).join('\r\n');
+  const headerText = lines.slice(0, headerEndIndex + 1).join('\r\n') + '\r\n';
   const headerBytes = new TextEncoder().encode(headerText);
   const body = data.slice(headerBytes.length);
   
@@ -123,6 +123,9 @@ export class HttpResponseCollector {
     
     if (!this._headersParsed) {
       this._tryParseHeaders();
+    } else {
+      // Update body received count
+      this._bodyReceived += chunk.length;
     }
   }
 
@@ -144,15 +147,40 @@ export class HttpResponseCollector {
       const headerBytes = new TextEncoder().encode(headerText);
       
       try {
-        const response = parseHttpResponse(headerBytes);
+        // Parse just the headers to get status and headers info
+        const lines = text.split('\r\n');
+        const statusLine = lines[0];
+        const statusMatch = statusLine.match(/^HTTP\/1\.[01] (\d+) (.*)$/);
+        if (!statusMatch) {
+          throw new Error('Invalid HTTP status line');
+        }
+        
+        const status = parseInt(statusMatch[1], 10);
+        const statusText = statusMatch[2];
+        const headers: Record<string, string> = {};
+        
+        for (let i = 1; i < lines.length; i++) {
+          const line = lines[i];
+          if (line === '') {
+            break;
+          }
+          
+          const colonIndex = line.indexOf(':');
+          if (colonIndex > 0) {
+            const key = line.substring(0, colonIndex).trim().toLowerCase();
+            const value = line.substring(colonIndex + 1).trim();
+            headers[key] = value;
+          }
+        }
+        
         this._response = {
-          status: response.status,
-          statusText: response.statusText,
-          headers: response.headers
+          status,
+          statusText,
+          headers
         };
         
         // Check for content-length
-        const contentLengthHeader = response.headers['content-length'];
+        const contentLengthHeader = headers['content-length'];
         if (contentLengthHeader) {
           this._contentLength = parseInt(contentLengthHeader, 10);
         }
