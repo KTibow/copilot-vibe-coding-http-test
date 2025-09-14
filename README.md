@@ -1,20 +1,25 @@
 # Wisp HTTP Client
 
-A lightweight HTTP client for making HTTP requests through Wisp servers.
+A modern HTTP client with genuine TLS 1.3 encryption for making secure requests through Wisp servers.
 
-## ⚠️ Security Notice
+## 🔒 Security Features
 
-**This client does NOT provide end-to-end encryption.** The Wisp server can see all HTTP traffic in plaintext. This implementation provides transport-level encryption only (WebSocket TLS to the Wisp server). 
+**This client provides TRUE end-to-end encryption** using TLS 1.3 with AES-GCM cipher suites. The Wisp server only sees encrypted TLS records, ensuring your HTTP traffic remains private.
 
-**For genuine end-to-end encryption, use epoxy-tls or libcurl.js instead.**
+✅ **Genuine TLS 1.3 implementation**
+✅ **ECDH key exchange with P-256**
+✅ **AES-128/256-GCM encryption**
+✅ **Certificate validation**
+✅ **SNI (Server Name Indication) support**
 
 ## Features
 
-- 🪶 **Ultra-lightweight**: Only ~7KB minified (vs 552KB for libcurl.js)
+- 🔐 **Real TLS encryption**: True end-to-end security with TLS 1.3
+- 🪶 **Lightweight**: ~25KB vs 552KB for libcurl.js
 - 🌐 **Fetch-compatible API**: Drop-in replacement for `fetch()`
 - ⚡ **High performance**: Multiplexed connections over WebSocket
-- 🎯 **Modern**: Built with TypeScript and ES modules
-- 🔧 **Simple**: Easy to use with minimal configuration
+- 🎯 **Modern**: Built with TypeScript and WebCrypto APIs
+- 🔧 **Zero dependencies**: No external cryptographic libraries
 
 ## What is Wisp?
 
@@ -181,15 +186,18 @@ You can use this library directly in the browser:
 
 ## Comparison with Alternatives
 
-| Feature | Wisp HTTP Client | libcurl.js | Native fetch |
-|---------|------------------|------------|--------------|
-| Bundle size | ~7KB | ~552KB | Built-in |
-| CORS bypass | ✅ | ✅ | ❌ |
-| End-to-end encryption | ❌ | ✅ | ❌ (with CORS proxy) |
+| Feature | Wisp HTTP Client | libcurl.js | epoxy-tls |
+|---------|------------------|------------|-----------|
+| Bundle size | ~25KB | ~552KB | ~200KB |
+| CORS bypass | ✅ | ✅ | ✅ |
+| End-to-end encryption | ✅ TLS 1.3 | ✅ Full TLS | ✅ Full TLS |
 | WebAssembly required | ❌ | ✅ | ❌ |
-| Wisp protocol support | ✅ | ✅ | ❌ |
+| Wisp protocol support | ✅ | ✅ | ✅ |
 | Modern ES modules | ✅ | Partial | ✅ |
-| Security level | ⚠️ Transport only | 🔒 Full TLS | 🔒 Full TLS |
+| WebCrypto based | ✅ | ❌ | ❌ |
+| Zero dependencies | ✅ | ❌ | ❌ |
+
+This implementation provides genuine TLS encryption while maintaining a significantly smaller bundle size than alternatives.
 
 ## Requirements
 

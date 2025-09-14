@@ -125,7 +125,7 @@ export class WispHttpClient {
         try {
           // Send HTTP request over TLS
           const requestData = formatHttpRequest(request);
-          tlsClient.send(requestData);
+          await tlsClient.send(requestData);
         } catch (error) {
           cleanup();
           reject(error);
