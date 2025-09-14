@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Wisp HTTP Client - Browser Example</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .container {
+            margin: 20px 0;
+        }
+        button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background: #0056b3;
+        }
+        button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+        .result {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 4px;
+            margin: 10px 0;
+            border-left: 4px solid #007bff;
+        }
+        .error {
+            border-left-color: #dc3545;
+            background: #f8d7da;
+        }
+        input[type="text"] {
+            width: 400px;
+            padding: 8px;
+            margin: 5px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        textarea {
+            width: 100%;
+            height: 100px;
+            padding: 8px;
+            margin: 5px 0;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-family: monospace;
+        }
+        pre {
+            background: #f8f9fa;
+            padding: 10px;
+            border-radius: 4px;
+            overflow-x: auto;
+            white-space: pre-wrap;
+        }
+    </style>
+</head>
+<body>
+    <h1>Wisp HTTP Client - Browser Example</h1>
+    
+    <div class="container">
+        <h2>Configuration</h2>
+        <label>
+            Wisp Server URL:
+            <input type="text" id="wispUrl" value="wss://your-wisp-server.com/" placeholder="wss://your-wisp-server.com/">
+        </label>
+        <br>
+        <label>
+            Target URL:
+            <input type="text" id="targetUrl" value="https://httpbin.org/get" placeholder="https://httpbin.org/get">
+        </label>
+    </div>
+
+    <div class="container">
+        <h2>HTTP Methods</h2>
+        <button onclick="makeGetRequest()">GET Request</button>
+        <button onclick="makePostRequest()">POST Request</button>
+        <button onclick="makeCustomRequest()">Custom Request</button>
+    </div>
+
+    <div class="container">
+        <h2>Custom Request</h2>
+        <label>
+            Method:
+            <input type="text" id="customMethod" value="GET" placeholder="GET">
+        </label>
+        <br>
+        <label>
+            Headers (JSON):
+            <textarea id="customHeaders" placeholder='{"Content-Type": "application/json"}'></textarea>
+        </label>
+        <label>
+            Body:
+            <textarea id="customBody" placeholder='{"message": "Hello, World!"}'></textarea>
+        </label>
+    </div>
+
+    <div class="container">
+        <h2>Results</h2>
+        <div id="results"></div>
+    </div>
+
+    <script type="module">
+        // Import the Wisp HTTP Client
+        // In a real application, you'd import from your node_modules or CDN
+        import { createFetch } from '../dist/index.esm.js';
+
+        let wispFetch = null;
+
+        function updateWispClient() {
+            const wispUrl = document.getElementById('wispUrl').value;
+            if (wispUrl) {
+                try {
+                    wispFetch = createFetch({
+                        wispServerUrl: wispUrl,
+                        timeout: 10000
+                    });
+                    addResult('Wisp client updated with URL: ' + wispUrl, false);
+                } catch (error) {
+                    addResult('Error creating Wisp client: ' + error.message, true);
+                }
+            }
+        }
+
+        function addResult(message, isError = false) {
+            const results = document.getElementById('results');
+            const div = document.createElement('div');
+            div.className = isError ? 'result error' : 'result';
+            div.innerHTML = '<pre>' + escapeHtml(message) + '</pre>';
+            results.appendChild(div);
+            results.scrollTop = results.scrollHeight;
+        }
+
+        function escapeHtml(unsafe) {
+            return unsafe
+                 .replace(/&/g, "&amp;")
+                 .replace(/</g, "&lt;")
+                 .replace(/>/g, "&gt;")
+                 .replace(/"/g, "&quot;")
+                 .replace(/'/g, "&#039;");
+        }
+
+        async function makeRequest(method, url, options = {}) {
+            updateWispClient();
+            
+            if (!wispFetch) {
+                addResult('No Wisp client available', true);
+                return;
+            }
+
+            try {
+                addResult(`Making ${method} request to ${url}...`);
+                
+                const startTime = Date.now();
+                const response = await wispFetch(url, {
+                    method,
+                    ...options
+                });
+                const endTime = Date.now();
+
+                const responseText = await response.text();
+                
+                const result = {
+                    status: response.status,
+                    statusText: response.statusText,
+                    headers: Object.fromEntries(response.headers.entries()),
+                    body: responseText,
+                    timing: `${endTime - startTime}ms`
+                };
+
+                addResult(`Response (${result.timing}):\n${JSON.stringify(result, null, 2)}`);
+            } catch (error) {
+                addResult(`Error: ${error.message}`, true);
+            }
+        }
+
+        window.makeGetRequest = function() {
+            const url = document.getElementById('targetUrl').value;
+            makeRequest('GET', url);
+        };
+
+        window.makePostRequest = function() {
+            const url = document.getElementById('targetUrl').value;
+            makeRequest('POST', url, {
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    message: 'Hello from Wisp HTTP Client!',
+                    timestamp: new Date().toISOString()
+                })
+            });
+        };
+
+        window.makeCustomRequest = function() {
+            const url = document.getElementById('targetUrl').value;
+            const method = document.getElementById('customMethod').value;
+            const headersText = document.getElementById('customHeaders').value;
+            const body = document.getElementById('customBody').value;
+
+            let headers = {};
+            if (headersText.trim()) {
+                try {
+                    headers = JSON.parse(headersText);
+                } catch (error) {
+                    addResult('Invalid JSON in headers: ' + error.message, true);
+                    return;
+                }
+            }
+
+            const options = { headers };
+            if (body.trim()) {
+                options.body = body;
+            }
+
+            makeRequest(method, url, options);
+        };
+
+        // Initial client setup
+        updateWispClient();
+        
+        addResult('Wisp HTTP Client Example loaded. Note: You need a running Wisp server to make actual requests.');
+    </script>
+</body>
+</html>
