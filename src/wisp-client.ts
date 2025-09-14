@@ -26,6 +26,8 @@ class WispStream extends EventTarget {
     super();
     this._streamId = streamId;
     this._client = client;
+    // Give streams an initial buffer allowance to handle immediate sends
+    this._bufferRemaining = 10; // Allow 10 packets initially
   }
 
   get streamId(): number {

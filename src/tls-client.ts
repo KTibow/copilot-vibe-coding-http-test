@@ -113,7 +113,7 @@ export class TlsClient extends EventTarget {
     const extensions = this._buildExtensions(publicKey);
     
     // Build ClientHello message
-    const message = new Uint8Array(2 + 32 + 1 + 2 + 2 + extensions.length);
+    const message = new Uint8Array(2 + 32 + 1 + 2 + 4 + 2 + extensions.length);
     let offset = 0;
 
     // Protocol version (TLS 1.2 for compatibility)
@@ -217,15 +217,15 @@ export class TlsClient extends EventTarget {
   }
 
   private _buildKeyShareExtension(publicKey: Uint8Array): Uint8Array {
-    const extension = new Uint8Array(8 + publicKey.length);
+    const extension = new Uint8Array(10 + publicKey.length);
     const view = new DataView(extension.buffer);
 
     // Extension type (key_share = 51)
     view.setUint16(0, 51, false);
     // Extension length
-    view.setUint16(2, 4 + publicKey.length, false);
+    view.setUint16(2, 6 + publicKey.length, false);
     // Key share entries length
-    view.setUint16(4, 2 + publicKey.length, false);
+    view.setUint16(4, 4 + publicKey.length, false);
     // Named group (P-256 = 23)
     view.setUint16(6, 23, false);
     // Key exchange length
@@ -285,17 +285,17 @@ export class TlsClient extends EventTarget {
     }
 
     try {
-      // Encrypt application data using AES-GCM
-      const dataBuffer = data instanceof ArrayBuffer ? data : data.buffer;
+      // Since the input is already typed as Uint8Array, we can use it directly
+      const dataBuffer = new ArrayBuffer(data.byteLength);
+      new Uint8Array(dataBuffer).set(data);
+      
       const encrypted = await crypto.subtle.encrypt(
         {
           name: 'AES-GCM',
           iv: this._writeIV.slice()
         },
         this._writeKey,
-        dataBuffer instanceof SharedArrayBuffer ? 
-          new Uint8Array(dataBuffer).slice() : 
-          dataBuffer.slice(data.byteOffset || 0, (data.byteOffset || 0) + data.byteLength)
+        dataBuffer
       );
 
       this._sendRecord(TLS_CONTENT_TYPE_APPLICATION_DATA, new Uint8Array(encrypted));
@@ -334,7 +334,9 @@ export class TlsClient extends EventTarget {
     let offset = 0;
 
     while (offset + 5 <= this._receiveBuffer.length) {
-      const view = new DataView(this._receiveBuffer.buffer, this._receiveBuffer.byteOffset + offset);
+      // Create a proper view of the current position
+      const headerBytes = this._receiveBuffer.slice(offset, offset + 5);
+      const view = new DataView(headerBytes.buffer);
       
       const contentType = view.getUint8(0);
       const version = view.getUint16(1, false);
@@ -387,7 +389,8 @@ export class TlsClient extends EventTarget {
     while (offset < data.length) {
       if (offset + 4 > data.length) break;
 
-      const view = new DataView(data.buffer, data.byteOffset + offset);
+      const headerBytes = data.slice(offset, offset + 4);
+      const view = new DataView(headerBytes.buffer);
       const messageType = view.getUint8(0);
       const messageLength = (view.getUint8(1) << 16) | view.getUint16(2, false);
       
@@ -510,17 +513,17 @@ export class TlsClient extends EventTarget {
     }
 
     try {
-      // Decrypt application data using AES-GCM
-      const dataBuffer = data instanceof ArrayBuffer ? data : data.buffer;
+      // Since the input is already typed as Uint8Array, use it directly
+      const dataBuffer = new ArrayBuffer(data.byteLength);
+      new Uint8Array(dataBuffer).set(data);
+      
       const decrypted = await crypto.subtle.decrypt(
         {
           name: 'AES-GCM',
           iv: this._readIV.slice()
         },
         this._readKey,
-        dataBuffer instanceof SharedArrayBuffer ? 
-          new Uint8Array(dataBuffer).slice() : 
-          dataBuffer.slice(data.byteOffset || 0, (data.byteOffset || 0) + data.byteLength)
+        dataBuffer
       );
 
       this.dispatchEvent(new CustomEvent('data', { detail: new Uint8Array(decrypted) }));

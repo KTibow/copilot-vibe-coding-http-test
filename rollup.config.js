@@ -31,14 +31,14 @@ export default {
     }),
     ...(!isDevelopment ? [terser({
       compress: {
-        drop_console: true,
-        drop_debugger: true,
-        pure_funcs: ['console.log', 'console.warn']
+        drop_console: false,
+        drop_debugger: false,
+        pure_funcs: []
       },
-      mangle: {
-        properties: {
-          regex: /^_/
-        }
+      mangle: false,
+      format: {
+        beautify: true,
+        indent_level: 2
       }
     })] : [])
   ]
