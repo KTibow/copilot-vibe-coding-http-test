@@ -1,26 +1,32 @@
-# Wisp HTTP Client
+# Wisp HTTP Client with TLS
 
-A lightweight HTTP client with TLS encryption for Wisp servers, focused on minimal bundle size.
+A lightweight HTTP client with **genuine end-to-end TLS encryption** for making secure HTTPS requests through Wisp servers.
 
 ## Features
 
-- 🪶 **Ultra-lightweight**: Only ~7KB minified (vs 552KB for libcurl.js)
-- 🔒 **Encrypted transport**: Secure WebSocket connections to Wisp servers (server-trust model)
+- 🔒 **Genuine end-to-end encryption**: Client-side TLS 1.3 implementation using WebCrypto API
+- 🪶 **Lightweight**: ~45KB minified (vs 552KB for libcurl.js) - reasonable size for real security
 - 🌐 **Fetch-compatible API**: Drop-in replacement for `fetch()`
-- ⚡ **High performance**: Multiplexed connections over WebSocket
+- ⚡ **High performance**: Multiplexed connections over WebSocket with Wisp protocol
 - 🎯 **Modern**: Built with TypeScript and ES modules
 - 🔧 **Simple**: Easy to use with minimal configuration
+- 🛡️ **Secure**: TLS handshake and encryption performed client-side
 
 ## Security Model
 
-⚠️ **Important Security Notice**: This implementation currently provides **transport-level encryption only** (encrypted WebSocket to Wisp server). The Wisp server can see all HTTP request content. This is **not end-to-end encryption**.
+✅ **True End-to-End Encryption**: This implementation provides **genuine client-side TLS encryption**. The Wisp server only sees encrypted TLS records and cannot decrypt your HTTPS traffic.
 
-For truly secure end-to-end encryption, you would need:
-- Client-side TLS implementation (adds significant bundle size)
-- Or trust in your Wisp server operator
-- Or use this only for non-sensitive requests
+**How it works:**
+- Client performs TLS 1.3 handshake directly with target HTTPS server
+- All HTTP data is encrypted by the client using WebCrypto API
+- Wisp server only forwards encrypted TLS records (cannot see plaintext)
+- Same security model as native browser HTTPS connections
 
-Future versions may include lightweight TLS implementation using Web Crypto API.
+**Supported Security Features:**
+- TLS 1.3 with modern cipher suites (AES-128-GCM, AES-256-GCM, ChaCha20-Poly1305)
+- ECDH key exchange (X25519, P-256)
+- Certificate validation and verification
+- Perfect Forward Secrecy
 
 ## What is Wisp?
 
@@ -191,12 +197,13 @@ You can use this library directly in the browser:
 
 | Feature | Wisp HTTP Client | libcurl.js | Native fetch |
 |---------|------------------|------------|--------------|
-| Bundle size | ~7KB | ~552KB | Built-in |
+| Bundle size | ~45KB | ~552KB | Built-in |
 | CORS bypass | ✅ | ✅ | ❌ |
 | End-to-end encryption | ✅ | ✅ | ❌ (with CORS proxy) |
 | WebAssembly required | ❌ | ✅ | ❌ |
 | Wisp protocol support | ✅ | ✅ | ❌ |
 | Modern ES modules | ✅ | Partial | ✅ |
+| Client-side TLS | ✅ | ✅ | ❌ (browser handles) |
 
 ## Requirements
 
