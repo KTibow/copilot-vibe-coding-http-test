@@ -71,9 +71,12 @@
     
     <div class="container">
         <h2>Configuration</h2>
+        <div style="margin-bottom: 10px;">
+            <button onclick="testWispServers()" style="background: #28a745; color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer;">🔍 Find Working Wisp Server</button>
+        </div>
         <label>
             Wisp Server URL:
-            <input type="text" id="wispUrl" value="wss://your-wisp-server.com/" placeholder="wss://your-wisp-server.com/">
+            <input type="text" id="wispUrl" value="wss://wisp.mercurywork.shop/" placeholder="wss://wisp.mercurywork.shop/">
         </label>
         <br>
         <label>
@@ -225,6 +228,70 @@
             }
 
             makeRequest(method, url, options);
+        };
+
+        // Test multiple Wisp servers to find working ones
+        window.testWispServers = async function() {
+            const testServers = [
+                'wss://wisp.mercurywork.shop/',
+                'wss://wisp-server.herokuapp.com/',
+                'wss://wisp.retronetwork.me/',
+                'wss://wisp.nobounce.fun/',
+                'wss://server.nobounce.fun/wisp/',
+                'wss://wisp-test.onrender.com/'
+            ];
+            
+            addResult('🔍 Testing Wisp servers...');
+            
+            const testWispServer = (url) => {
+                return new Promise((resolve) => {
+                    const ws = new WebSocket(url);
+                    const timeout = setTimeout(() => {
+                        ws.close();
+                        resolve({ url, status: 'timeout' });
+                    }, 3000);
+                    
+                    ws.onopen = () => {
+                        clearTimeout(timeout);
+                        ws.close();
+                        resolve({ url, status: 'success' });
+                    };
+                    
+                    ws.onerror = () => {
+                        clearTimeout(timeout);
+                        resolve({ url, status: 'error' });
+                    };
+                    
+                    ws.onclose = (event) => {
+                        clearTimeout(timeout);
+                        if (event.wasClean) {
+                            resolve({ url, status: 'success' });
+                        } else {
+                            resolve({ url, status: 'closed' });
+                        }
+                    };
+                });
+            };
+            
+            const results = await Promise.all(testServers.map(testWispServer));
+            
+            let foundWorking = false;
+            results.forEach(result => {
+                const status = result.status === 'success' ? '✅' : '❌';
+                addResult(`${status} ${result.url} - ${result.status}`);
+                
+                if (result.status === 'success' && !foundWorking) {
+                    document.getElementById('wispUrl').value = result.url;
+                    updateWispClient();
+                    foundWorking = true;
+                }
+            });
+            
+            if (foundWorking) {
+                addResult('🎉 Found working server and updated configuration!');
+            } else {
+                addResult('😞 No working servers found. You may need to set up your own Wisp server.');
+            }
         };
 
         // Initial client setup

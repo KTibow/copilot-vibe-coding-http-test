@@ -5,13 +5,26 @@ A lightweight HTTP client with TLS encryption for Wisp servers, focused on minim
 ## Features
 
 - 🪶 **Ultra-lightweight**: Only ~7KB minified (vs 552KB for libcurl.js)
-- 🔒 **End-to-end encryption**: Full TLS encryption via Wisp protocol
+- 🔒 **Encrypted transport**: Secure WebSocket connections to Wisp servers (server-trust model)
 - 🌐 **Fetch-compatible API**: Drop-in replacement for `fetch()`
 - ⚡ **High performance**: Multiplexed connections over WebSocket
 - 🎯 **Modern**: Built with TypeScript and ES modules
 - 🔧 **Simple**: Easy to use with minimal configuration
 
+## Security Model
+
+⚠️ **Important Security Notice**: This implementation currently provides **transport-level encryption only** (encrypted WebSocket to Wisp server). The Wisp server can see all HTTP request content. This is **not end-to-end encryption**.
+
+For truly secure end-to-end encryption, you would need:
+- Client-side TLS implementation (adds significant bundle size)
+- Or trust in your Wisp server operator
+- Or use this only for non-sensitive requests
+
+Future versions may include lightweight TLS implementation using Web Crypto API.
+
 ## What is Wisp?
+
+Wisp is a protocol that allows multiplexed TCP streams over WebSocket connections. It enables browsers to make TCP connections to any server through a Wisp proxy server, bypassing browser limitations on raw TCP connections.
 
 [Wisp](https://github.com/MercuryWorkshop/wisp-protocol) is a lightweight multiplexing websocket proxy protocol that allows multiple TCP/UDP sockets to share a single websocket connection. This library implements a Wisp client for making HTTP requests through a Wisp server.
 
