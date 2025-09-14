@@ -1,36 +1,22 @@
-# Wisp HTTP Client with TLS
+# Wisp HTTP Client
 
-A lightweight HTTP client with **genuine end-to-end TLS encryption** for making secure HTTPS requests through Wisp servers.
+A lightweight HTTP client for making HTTP requests through Wisp servers.
+
+## ⚠️ Security Notice
+
+**This client does NOT provide end-to-end encryption.** The Wisp server can see all HTTP traffic in plaintext. This implementation provides transport-level encryption only (WebSocket TLS to the Wisp server). 
+
+**For genuine end-to-end encryption, use epoxy-tls or libcurl.js instead.**
 
 ## Features
 
-- 🔒 **Genuine end-to-end encryption**: Client-side TLS 1.3 implementation using WebCrypto API
-- 🪶 **Lightweight**: ~45KB minified (vs 552KB for libcurl.js) - reasonable size for real security
+- 🪶 **Ultra-lightweight**: Only ~7KB minified (vs 552KB for libcurl.js)
 - 🌐 **Fetch-compatible API**: Drop-in replacement for `fetch()`
-- ⚡ **High performance**: Multiplexed connections over WebSocket with Wisp protocol
+- ⚡ **High performance**: Multiplexed connections over WebSocket
 - 🎯 **Modern**: Built with TypeScript and ES modules
 - 🔧 **Simple**: Easy to use with minimal configuration
-- 🛡️ **Secure**: TLS handshake and encryption performed client-side
-
-## Security Model
-
-✅ **True End-to-End Encryption**: This implementation provides **genuine client-side TLS encryption**. The Wisp server only sees encrypted TLS records and cannot decrypt your HTTPS traffic.
-
-**How it works:**
-- Client performs TLS 1.3 handshake directly with target HTTPS server
-- All HTTP data is encrypted by the client using WebCrypto API
-- Wisp server only forwards encrypted TLS records (cannot see plaintext)
-- Same security model as native browser HTTPS connections
-
-**Supported Security Features:**
-- TLS 1.3 with modern cipher suites (AES-128-GCM, AES-256-GCM, ChaCha20-Poly1305)
-- ECDH key exchange (X25519, P-256)
-- Certificate validation and verification
-- Perfect Forward Secrecy
 
 ## What is Wisp?
-
-Wisp is a protocol that allows multiplexed TCP streams over WebSocket connections. It enables browsers to make TCP connections to any server through a Wisp proxy server, bypassing browser limitations on raw TCP connections.
 
 [Wisp](https://github.com/MercuryWorkshop/wisp-protocol) is a lightweight multiplexing websocket proxy protocol that allows multiple TCP/UDP sockets to share a single websocket connection. This library implements a Wisp client for making HTTP requests through a Wisp server.
 
@@ -197,13 +183,13 @@ You can use this library directly in the browser:
 
 | Feature | Wisp HTTP Client | libcurl.js | Native fetch |
 |---------|------------------|------------|--------------|
-| Bundle size | ~45KB | ~552KB | Built-in |
+| Bundle size | ~7KB | ~552KB | Built-in |
 | CORS bypass | ✅ | ✅ | ❌ |
-| End-to-end encryption | ✅ | ✅ | ❌ (with CORS proxy) |
+| End-to-end encryption | ❌ | ✅ | ❌ (with CORS proxy) |
 | WebAssembly required | ❌ | ✅ | ❌ |
 | Wisp protocol support | ✅ | ✅ | ❌ |
 | Modern ES modules | ✅ | Partial | ✅ |
-| Client-side TLS | ✅ | ✅ | ❌ (browser handles) |
+| Security level | ⚠️ Transport only | 🔒 Full TLS | 🔒 Full TLS |
 
 ## Requirements
 

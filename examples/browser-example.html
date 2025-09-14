@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Wisp HTTP Client with TLS - Browser Example</title>
+    <title>Wisp HTTP Client - Browser Example</title>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -67,34 +67,19 @@
     </style>
 </head>
 <body>
-    <h1>Wisp HTTP Client with TLS - Browser Example</h1>
-    
-    <div class="container">
-        <h2>🔒 Security Notice</h2>
-        <div class="result">
-            <strong>Genuine End-to-End Encryption:</strong> This client implements TLS 1.3 encryption client-side. 
-            HTTPS requests are encrypted by your browser before being sent through the Wisp server, 
-            ensuring the Wisp server cannot see your data - just like native browser HTTPS.
-        </div>
-    </div>
+    <h1>Wisp HTTP Client - Browser Example</h1>
     
     <div class="container">
         <h2>Configuration</h2>
-        <div style="margin-bottom: 10px;">
-            <button onclick="testWispServers()" style="background: #28a745; color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer;">🔍 Find Working Wisp Server</button>
-        </div>
         <label>
             Wisp Server URL:
-            <input type="text" id="wispUrl" value="wss://wisp.mercurywork.shop/" placeholder="wss://wisp.mercurywork.shop/">
+            <input type="text" id="wispUrl" value="wss://your-wisp-server.com/" placeholder="wss://your-wisp-server.com/">
         </label>
         <br>
         <label>
             Target URL:
             <input type="text" id="targetUrl" value="https://httpbin.org/get" placeholder="https://httpbin.org/get">
         </label>
-        <div style="margin-top: 10px; font-size: 14px; color: #666;">
-            💡 Try both HTTP and HTTPS URLs to see the difference. HTTPS URLs will use client-side TLS encryption.
-        </div>
     </div>
 
     <div class="container">
@@ -102,7 +87,6 @@
         <button onclick="makeGetRequest()">GET Request</button>
         <button onclick="makePostRequest()">POST Request</button>
         <button onclick="makeCustomRequest()">Custom Request</button>
-        <button onclick="testTlsCapabilities()" style="background: #6f42c1;">🔒 Test TLS Capabilities</button>
     </div>
 
     <div class="container">
@@ -241,181 +225,6 @@
             }
 
             makeRequest(method, url, options);
-        };
-
-        // Test TLS capabilities
-        window.testTlsCapabilities = async function() {
-            addResult('🔒 Testing TLS capabilities...');
-            
-            // Test WebCrypto API availability
-            if (typeof crypto !== 'undefined' && crypto.subtle) {
-                addResult('✅ WebCrypto API available');
-                
-                try {
-                    // Test key generation
-                    const keyPair = await crypto.subtle.generateKey(
-                        { name: 'ECDH', namedCurve: 'P-256' },
-                        false,
-                        ['deriveKey', 'deriveBits']
-                    );
-                    addResult('✅ ECDH key generation works');
-                    
-                    // Test AES key generation
-                    const aesKey = await crypto.subtle.generateKey(
-                        { name: 'AES-GCM', length: 256 },
-                        false,
-                        ['encrypt', 'decrypt']
-                    );
-                    addResult('✅ AES-GCM key generation works');
-                    
-                    // Test encryption/decryption
-                    const plaintext = new TextEncoder().encode('Test TLS encryption');
-                    const iv = crypto.getRandomValues(new Uint8Array(12));
-                    
-                    const encrypted = await crypto.subtle.encrypt(
-                        { name: 'AES-GCM', iv: iv },
-                        aesKey,
-                        plaintext
-                    );
-                    
-                    const decrypted = await crypto.subtle.decrypt(
-                        { name: 'AES-GCM', iv: iv },
-                        aesKey,
-                        encrypted
-                    );
-                    
-                    const decryptedText = new TextDecoder().decode(decrypted);
-                    if (decryptedText === 'Test TLS encryption') {
-                        addResult('✅ AES-GCM encryption/decryption works');
-                    } else {
-                        addResult('❌ AES-GCM encryption/decryption failed', true);
-                    }
-                    
-                } catch (error) {
-                    addResult('❌ Crypto test failed: ' + error.message, true);
-                }
-            } else {
-                addResult('❌ WebCrypto API not available', true);
-            }
-            
-            // Test HTTPS vs HTTP distinction
-            const httpsUrl = 'https://httpbin.org/get';
-            const httpUrl = 'http://httpbin.org/get';
-            
-            try {
-                const httpsUrlObj = new URL(httpsUrl);
-                const httpUrlObj = new URL(httpUrl);
-                
-                if (httpsUrlObj.protocol === 'https:') {
-                    addResult('✅ HTTPS URL detection works - will use TLS');
-                } else {
-                    addResult('❌ HTTPS URL detection failed', true);
-                }
-                
-                if (httpUrlObj.protocol === 'http:') {
-                    addResult('✅ HTTP URL detection works - will use plaintext');
-                } else {
-                    addResult('❌ HTTP URL detection failed', true);
-                }
-                
-            } catch (error) {
-                addResult('❌ URL parsing test failed: ' + error.message, true);
-            }
-            
-            // Test actual HTTPS request
-            addResult('Testing actual HTTPS request with TLS...');
-            updateWispClient();
-            
-            if (wispFetch) {
-                try {
-                    const testUrl = 'https://httpbin.org/json';
-                    addResult(`Making TLS-encrypted request to ${testUrl}...`);
-                    
-                    const startTime = Date.now();
-                    const response = await wispFetch(testUrl, { timeout: 15000 });
-                    const endTime = Date.now();
-                    
-                    if (response.ok) {
-                        const data = await response.json();
-                        addResult(`✅ HTTPS/TLS request successful! (${endTime - startTime}ms)`);
-                        addResult(`Response: ${JSON.stringify(data, null, 2)}`);
-                    } else {
-                        addResult(`❌ HTTPS request failed with status: ${response.status}`, true);
-                    }
-                    
-                } catch (error) {
-                    addResult(`⚠️ HTTPS request failed: ${error.message}`);
-                    addResult('This is expected if no working Wisp server is available');
-                }
-            } else {
-                addResult('❌ No Wisp client available for HTTPS testing', true);
-            }
-            
-            addResult('🔒 TLS capabilities test completed!');
-        };
-
-        // Test multiple Wisp servers to find working ones
-        window.testWispServers = async function() {
-            const testServers = [
-                'wss://wisp.mercurywork.shop/',
-                'wss://wisp-server.herokuapp.com/',
-                'wss://wisp.retronetwork.me/',
-                'wss://wisp.nobounce.fun/',
-                'wss://server.nobounce.fun/wisp/',
-                'wss://wisp-test.onrender.com/'
-            ];
-            
-            addResult('🔍 Testing Wisp servers...');
-            
-            const testWispServer = (url) => {
-                return new Promise((resolve) => {
-                    const ws = new WebSocket(url);
-                    const timeout = setTimeout(() => {
-                        ws.close();
-                        resolve({ url, status: 'timeout' });
-                    }, 3000);
-                    
-                    ws.onopen = () => {
-                        clearTimeout(timeout);
-                        ws.close();
-                        resolve({ url, status: 'success' });
-                    };
-                    
-                    ws.onerror = () => {
-                        clearTimeout(timeout);
-                        resolve({ url, status: 'error' });
-                    };
-                    
-                    ws.onclose = (event) => {
-                        clearTimeout(timeout);
-                        if (event.wasClean) {
-                            resolve({ url, status: 'success' });
-                        } else {
-                            resolve({ url, status: 'closed' });
-                        }
-                    };
-                });
-            };
-            
-            const results = await Promise.all(testServers.map(testWispServer));
-            
-            let foundWorking = false;
-            results.forEach(result => {
-                const status = result.status === 'success' ? '✅' : '❌';
-                addResult(`${status} ${result.url} - ${result.status}`);
-                
-                if (result.status === 'success' && !foundWorking) {
-                    document.getElementById('wispUrl').value = result.url;
-                    updateWispClient();
-                    foundWorking = true;
-                }
-            });
-            
-            if (foundWorking) {
-                addResult('🎉 Found working server and updated configuration!');
-            } else {
-                addResult('😞 No working servers found. You may need to set up your own Wisp server.');
-            }
         };
 
         // Initial client setup

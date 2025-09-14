@@ -1,6 +1,5 @@
 import { WispClient } from './wisp-client.js';
 import { HttpRequest, HttpResponse, formatHttpRequest, HttpResponseCollector } from './http.js';
-import { TlsClient } from './tls-client.js';
 
 /**
  * Configuration for the HTTP client
@@ -47,7 +46,7 @@ export class WispHttpClient {
   }
 
   /**
-   * Make an HTTP request with genuine end-to-end encryption for HTTPS
+   * Make an HTTP request
    */
   async request(url: string, options: RequestOptions = {}): Promise<HttpResponse> {
     if (!this._client) {
@@ -85,105 +84,6 @@ export class WispHttpClient {
       body
     };
 
-    if (isHttps) {
-      // Use TLS client for genuine end-to-end encryption
-      return await this._makeHttpsRequest(parsedUrl, request, options);
-    } else {
-      // Use regular HTTP for non-encrypted requests
-      return await this._makeHttpRequest(parsedUrl, request, options);
-    }
-  }
-
-  /**
-   * Make an HTTPS request with genuine end-to-end TLS encryption
-   */
-  private async _makeHttpsRequest(parsedUrl: URL, request: HttpRequest, options: RequestOptions): Promise<HttpResponse> {
-    const port = parsedUrl.port ? parseInt(parsedUrl.port, 10) : 443;
-    
-    // Create Wisp stream to the target server
-    const stream = this._client!.createStream(parsedUrl.hostname, port);
-    
-    // Create TLS client that will encrypt data before sending through Wisp
-    const tlsClient = new TlsClient(parsedUrl.hostname, port, stream);
-    
-    try {
-      // Perform TLS handshake - this establishes genuine end-to-end encryption
-      await tlsClient.connect();
-      
-      // Format HTTP request
-      const requestData = formatHttpRequest(request);
-      
-      // Send encrypted HTTP request through TLS
-      await tlsClient.sendApplicationData(requestData);
-      
-      // Receive and decrypt HTTP response
-      return await this._receiveHttpsResponse(tlsClient, options);
-      
-    } finally {
-      tlsClient.close();
-      stream.close();
-    }
-  }
-
-  /**
-   * Receive and decrypt HTTPS response
-   */
-  private async _receiveHttpsResponse(tlsClient: TlsClient, options: RequestOptions): Promise<HttpResponse> {
-    return new Promise((resolve, reject) => {
-      const collector = new HttpResponseCollector();
-      const timeout = options.timeout || this._config.timeout!;
-      
-      let timeoutId: number | null = setTimeout(() => {
-        reject(new Error('Request timeout'));
-      }, timeout);
-
-      const cleanup = () => {
-        if (timeoutId) {
-          clearTimeout(timeoutId);
-          timeoutId = null;
-        }
-      };
-
-      // Continuously receive and decrypt application data
-      const receiveLoop = async () => {
-        try {
-          while (true) {
-            const decryptedData = await tlsClient.receiveApplicationData();
-            collector.addChunk(decryptedData);
-            
-            if (collector.isComplete()) {
-              cleanup();
-              const response = collector.getResponse();
-              if (response) {
-                resolve(response);
-              } else {
-                reject(new Error('Failed to parse response'));
-              }
-              return;
-            }
-          }
-        } catch (error) {
-          cleanup();
-          // Check if we have a partial response
-          const response = collector.getResponse();
-          if (response) {
-            resolve(response);
-          } else {
-            reject(new Error(`TLS error: ${error}`));
-          }
-        }
-      };
-
-      receiveLoop();
-    });
-  }
-
-  /**
-   * Make a regular HTTP request (non-encrypted)
-   */
-  private async _makeHttpRequest(parsedUrl: URL, request: HttpRequest, options: RequestOptions): Promise<HttpResponse> {
-    const port = parsedUrl.port ? parseInt(parsedUrl.port, 10) : 80;
-    
     // Create stream and send request
     const stream = this._client!.createStream(parsedUrl.hostname, port);
     const requestData = formatHttpRequest(request);
